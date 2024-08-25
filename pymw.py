@@ -267,6 +267,7 @@ class MicroWear:
                 dist2 = self.point_to_line_distance(intersection, scratch2['start'], scratch2['end'])
                 min_dist = min(dist1, dist2)
                 is_parallel = not (min_dist < threshold)  # Note the change here
+                print(f"thresh: {threshold}")
 
             # Calculate angle between scratches
             angle = self.calculate_angle(scratch1, scratch2)
@@ -298,12 +299,18 @@ class MicroWear:
         return (x, y)
 
     def point_to_line_distance(self, point, line_start, line_end):
+        print(f"point: {point}")
+        print(f"line start: {line_start}")
+        print(f"line end: {line_end}")
         x0, y0 = point
         x1, y1 = line_start
         x2, y2 = line_end
 
         numerator = abs((y2 - y1) * x0 - (x2 - x1) * y0 + x2 * y1 - y2 * x1)
         denominator = np.sqrt((y2 - y1)**2 + (x2 - x1)**2)
+        print(f"numerator: {numerator}")
+        print(f"denom: {denominator}")
+        print(f"frac: {numerator / denominator if denominator != 0 else 0}")
 
         return numerator / denominator if denominator != 0 else 0
 
@@ -397,6 +404,37 @@ class MicroWear:
         print(f"Pit Mean Width: {stats['pit_mean_width']:.2f} ± {stats['pit_sd_width']:.2f}")
         print(f"Scratch Mean Length: {stats['scratch_mean_length']:.2f} ± {stats['scratch_sd_length']:.2f}")
         print(f"Scratch Mean Width: {stats['scratch_mean_width']:.2f} ± {stats['scratch_sd_width']:.2f}")
+
+    def visualize_classified_traces(self):
+        fig, ax = plt.subplots(figsize=(10, 10))
+        
+        # Display the original image
+        ax.imshow(self.image_rgb)
+        
+        for i, trace in enumerate(self.traces):
+            x = [trace['start'][0], trace['end'][0]]
+            y = [trace['start'][1], trace['end'][1]]
+            
+            if trace['type'] == 'Pit':
+                if trace['subtype'] == 'Small':
+                    ax.plot(x, y, 'ro', markersize=5)
+                else:  # Large Pit
+                    ax.plot(x, y, 'ro', markersize=8)
+            else:  # Scratch
+                if trace['subtype'] == 'Fine':
+                    ax.plot(x, y, 'b-', linewidth=1)
+                else:  # Coarse Scratch
+                    ax.plot(x, y, 'b-', linewidth=2)
+            
+            # Add label
+            mid_x = np.mean(x)
+            mid_y = np.mean(y)
+            ax.text(mid_x, mid_y, str(i+1), color='yellow', fontsize=8, 
+                    ha='center', va='center', bbox=dict(facecolor='black', alpha=0.5))
+        
+        ax.set_title('Classified Microwear Traces')
+        plt.tight_layout()
+        plt.show()
 
 # Usage
 #micro_wear = MicroWear('images/BV84.jpg')
