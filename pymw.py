@@ -230,7 +230,7 @@ class MicroWear:
             height_pixels = y2 - y1
             width_mm = width_pixels * self.scale_factor
             height_mm = height_pixels * self.scale_factor
-            return width_mm * height_mm
+            return (width_mm * height_mm) / 1e6
         return 0
 
     def detect_parallel_and_crossing_scratches(self):
@@ -267,7 +267,6 @@ class MicroWear:
                 dist2 = self.point_to_line_distance(intersection, scratch2['start'], scratch2['end'])
                 min_dist = min(dist1, dist2)
                 is_parallel = not (min_dist < threshold)  # Note the change here
-                print(f"thresh: {threshold}")
 
             # Calculate angle between scratches
             angle = self.calculate_angle(scratch1, scratch2)
@@ -299,20 +298,16 @@ class MicroWear:
         return (x, y)
 
     def point_to_line_distance(self, point, line_start, line_end):
-        print(f"point: {point}")
-        print(f"line start: {line_start}")
-        print(f"line end: {line_end}")
         x0, y0 = point
         x1, y1 = line_start
         x2, y2 = line_end
 
-        numerator = abs((y2 - y1) * x0 - (x2 - x1) * y0 + x2 * y1 - y2 * x1)
-        denominator = np.sqrt((y2 - y1)**2 + (x2 - x1)**2)
-        print(f"numerator: {numerator}")
-        print(f"denom: {denominator}")
-        print(f"frac: {numerator / denominator if denominator != 0 else 0}")
+        # Calculate distances to start and end points
+        dist_start = np.sqrt((x0 - x1)**2 + (y0 - y1)**2)
+        dist_end = np.sqrt((x0 - x2)**2 + (y0 - y2)**2)
 
-        return numerator / denominator if denominator != 0 else 0
+        # Return the minimum distance
+        return min(dist_start, dist_end)
 
     def calculate_angle(self, scratch1, scratch2):
         v1 = np.array(scratch1['end']) - np.array(scratch1['start'])
