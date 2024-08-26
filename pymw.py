@@ -431,12 +431,13 @@ class MicroWear:
         plt.tight_layout()
         plt.show()
 
-# Usage
-#micro_wear = MicroWear('images/BV84.jpg')
-micro_wear = MicroWear('images/paper_img_A.png')
-micro_wear.set_scale()
-micro_wear.select_working_area()
-micro_wear.sample_traces()
-micro_wear.classify_traces()
-micro_wear.visualize_classified_traces()
-micro_wear.generate_summary()
+if __name__ == "__main__":
+    # Usage
+    #micro_wear = MicroWear('images/BV84.jpg')
+    micro_wear = MicroWear('images/paper_img_A.png')
+    micro_wear.set_scale()
+    micro_wear.select_working_area()
+    micro_wear.sample_traces()
+    micro_wear.classify_traces()
+    micro_wear.visualize_classified_traces()
+    micro_wear.generate_summary()
