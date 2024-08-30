@@ -5,14 +5,14 @@ from matplotlib.patches import Rectangle
 import csv
 import numpy as np
 from itertools import combinations
-
+import argparse
 class MicroWear:
-    def __init__(self, image_path):
+    def __init__(self, image_path, working_area_size=200):
         self.image = cv2.imread(image_path)
         self.image_rgb = cv2.cvtColor(self.image, cv2.COLOR_BGR2RGB)
         self.height, self.width = self.image.shape[:2]
         self.area = min(self.height, self.width) / 2
-        self.scale_factor = None
+        self.working_area_size = working_area_size
         self.working_area = None
         self.traces = []
 
@@ -37,8 +37,8 @@ class MicroWear:
             print("Please set the scale first.")
             return
 
-        # Convert 200x200 microns to pixels
-        box_size_pixels = int(200 / self.scale_factor)
+        # Convert working_area_size microns to pixels
+        box_size_pixels = int(self.working_area_size / self.scale_factor)
 
         fig, ax = plt.subplots()
         ax.imshow(self.image_rgb)
@@ -426,14 +426,14 @@ class MicroWear:
         ax.add_patch(rect)
 
         # Calculate buffer
-        buffer = int(0.2 * (x2 - x1))  # 20% buffer, same as in sample_traces
-
+        buffer = int(0.2 * self.working_area_size / self.scale_factor)  # 20% buffer, dynamic based on working_area_size
+        
         for i, trace in enumerate(self.traces):
             # Translate coordinates from the working area (including buffer) to the full image
-            start_x = trace['start'][0] - buffer + x1
-            start_y = trace['start'][1] - buffer + y1
-            end_x = trace['end'][0] - buffer + x1
-            end_y = trace['end'][1] - buffer + y1
+            start_x = trace['start'][0] - buffer + self.working_area[0]
+            start_y = trace['start'][1] - buffer + self.working_area[1]
+            end_x = trace['end'][0] - buffer + self.working_area[0]
+            end_y = trace['end'][1] - buffer + self.working_area[1]
 
             if trace['type'] == 'Pit':
                 if trace['subtype'] == 'Small':
@@ -462,9 +462,13 @@ class MicroWear:
         plt.show()
 
 if __name__ == "__main__":
-    # Usage
-    #micro_wear = MicroWear('images/BV84.jpg')
-    micro_wear = MicroWear('images/paper_img_A.png')
+    parser = argparse.ArgumentParser(description="MicroWear Analysis Tool")
+    IMAGE_PATH = 'images/paper_img_A.png'
+    parser.add_argument('--image_path', type=str, default=IMAGE_PATH, help='Path to the image file')
+    parser.add_argument('--working_area_size', type=int, default=200, help='Size of the working area in microns (default: 200)')
+    args = parser.parse_args()
+
+    micro_wear = MicroWear(args.image_path, args.working_area_size)
     micro_wear.set_scale()
     micro_wear.select_working_area()
     micro_wear.sample_traces()
