@@ -74,10 +74,13 @@ class MicroWear:
             return
         
         x1, y1, x2, y2 = self.working_area
-        working_image = self.image_rgb[y1:y2, x1:x2]
+        buffer = int(0.2 * (x2 - x1))  # 20% buffer
+        working_image = self.image_rgb[max(0, y1-buffer):min(self.height, y2+buffer), max(0, x1-buffer):min(self.width, x2+buffer)]
         
         fig, (ax, status_ax) = plt.subplots(2, 1, gridspec_kw={'height_ratios': [4, 1]}, figsize=(10, 12))
         ax.imshow(working_image)
+        rect = Rectangle((buffer, buffer), x2 - x1, y2 - y1, linewidth=1, edgecolor='r', facecolor='none')
+        ax.add_patch(rect)
         status_ax.axis('off')
         
         current_sample = []
@@ -129,11 +132,11 @@ class MicroWear:
                     sample_lines = []
                     ax.clear()
                     ax.imshow(working_image)
+                    rect = Rectangle((buffer, buffer), x2 - x1, y2 - y1, linewidth=1, edgecolor='r', facecolor='none')
+                    ax.add_patch(rect)
                     for sample in all_samples:
                         draw_sample(sample[:2], 'r')
                         draw_sample(sample[2:], 'b')
-                    add_help_box()
-                else:
                     print("Please complete the current trace (4 points) before moving to the next.")
             elif event.key == 'u':  # Undo last point
                 if current_sample:
