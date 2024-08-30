@@ -185,6 +185,8 @@ class MicroWear:
                                          (current_sample[1][1] - current_sample[0][1])**2)
                         width = np.sqrt((current_sample[3][0] - current_sample[2][0])**2 + 
                                         (current_sample[3][1] - current_sample[2][1])**2)
+                        if width > length:
+                            length, width = width, length
                         self.traces.append({
                             'length': length * self.scale_factor,
                             'width': width * self.scale_factor,
@@ -407,8 +409,9 @@ class MicroWear:
         ax.imshow(self.image_rgb)
         
         for i, trace in enumerate(self.traces):
-            x = [trace['start'][0], trace['end'][0]]
-            y = [trace['start'][1], trace['end'][1]]
+            # Translate coordinates from the working area to the full image
+            x = [trace['start'][0] + self.working_area[0], trace['end'][0] + self.working_area[0]]
+            y = [trace['start'][1] + self.working_area[1], trace['end'][1] + self.working_area[1]]
             
             if trace['type'] == 'Pit':
                 if trace['subtype'] == 'Small':
