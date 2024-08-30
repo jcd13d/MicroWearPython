@@ -254,7 +254,7 @@ class MicroWear:
                 x, y = intersection
                 x1_range = [min(scratch1['start'][0], scratch1['end'][0]), max(scratch1['start'][0], scratch1['end'][0])]
                 y1_range = [min(scratch1['start'][1], scratch1['end'][1]), max(scratch1['start'][1], scratch1['end'][1])]
-                x2_range = [min(scratch2['start'][0], scratch2['end'][0]), max(scratch2['start'][0], scratch2['end'][0])]
+                x2_range = [min(scratch2['start'][0], scratch2['end'][0]), max(scratch2['start'][0], scratch2['end'][0])] 
                 y2_range = [min(scratch2['start'][1], scratch2['end'][1]), max(scratch2['start'][1], scratch2['end'][1])]
                 
                 is_crossing = (x1_range[0] < x < x1_range[1] and
