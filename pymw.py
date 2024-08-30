@@ -72,17 +72,17 @@ class MicroWear:
         if self.working_area is None:
             print("Please select a working area first.")
             return
-        
+
         x1, y1, x2, y2 = self.working_area
         buffer = int(0.2 * (x2 - x1))  # 20% buffer
         working_image = self.image_rgb[max(0, y1-buffer):min(self.height, y2+buffer), max(0, x1-buffer):min(self.width, x2+buffer)]
-        
+
         fig, (ax, status_ax) = plt.subplots(2, 1, gridspec_kw={'height_ratios': [4, 1]}, figsize=(10, 12))
         ax.imshow(working_image)
         rect = Rectangle((buffer, buffer), x2 - x1, y2 - y1, linewidth=1, edgecolor='r', facecolor='none')
         ax.add_patch(rect)
         status_ax.axis('off')
-        
+
         current_sample = []
         all_samples = []
         sample_counter = 1
@@ -122,7 +122,7 @@ class MicroWear:
         sample_lines = []
 
         def on_key(event):
-            nonlocal current_sample, all_samples, sample_counter, selection_counter, quit_flag, sample_lines
+            nonlocal current_sample, all_samples, sample_counter, selection_counter, quit_flag, sample_lines, help_box
             if event.key == 'n':  # Next sample
                 if len(current_sample) == 4:
                     all_samples.append(current_sample)
@@ -137,6 +137,12 @@ class MicroWear:
                     for sample in all_samples:
                         draw_sample(sample[:2], 'r')
                         draw_sample(sample[2:], 'b')
+                    # Re-add the help box after clearing the axes
+                    help_box.remove()
+                    help_box = ax.text(0.01, 0.99, "", transform=ax.transAxes, verticalalignment='top',
+                                       bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.7))
+                    add_help_box()
+                else:
                     print("Please complete the current trace (4 points) before moving to the next.")
             elif event.key == 'u':  # Undo last point
                 if current_sample:
@@ -157,6 +163,10 @@ class MicroWear:
                         sample_lines = [draw_sample(current_sample[:2], 'r')]
                     if len(current_sample) == 4:
                         sample_lines.append(draw_sample(current_sample[2:], 'b'))
+                    # Re-add the help box after clearing the axes
+                    help_box.remove()
+                    help_box = ax.text(0.01, 0.99, "", transform=ax.transAxes, verticalalignment='top',
+                                       bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.7))
                     add_help_box()
                 else:
                     print("Nothing to undo.")
@@ -179,7 +189,7 @@ class MicroWear:
                 if len(current_sample) < 4:
                     current_sample.append((event.xdata, event.ydata))
                     selection_counter += 1
-                    
+
                     if len(current_sample) == 2:
                         sample_lines.append(draw_sample(current_sample, 'r'))
                     elif len(current_sample) == 4:
@@ -196,12 +206,11 @@ class MicroWear:
                             'start': current_sample[0],
                             'end': current_sample[1]
                         })
-                    
+
                     update_status()
                     fig.canvas.draw_idle()
                 else:
                     print("You've already selected 4 points for this sample. Press 'n' to start a new sample or 'u' to undo the last point.")
-                    # Optionally, you can also display this message on the plot
                     status_text.set_text("Max 4 points reached.\nPress 'n' for new sample\nor 'u' to undo.")
                     fig.canvas.draw_idle()
 
@@ -407,32 +416,47 @@ class MicroWear:
 
     def visualize_classified_traces(self):
         fig, ax = plt.subplots(figsize=(10, 10))
-        
+
         # Display the original image
         ax.imshow(self.image_rgb)
-        
+
+        # Draw the working area
+        x1, y1, x2, y2 = self.working_area
+        rect = Rectangle((x1, y1), x2-x1, y2-y1, fill=False, edgecolor='yellow', linewidth=2)
+        ax.add_patch(rect)
+
+        # Calculate buffer
+        buffer = int(0.2 * (x2 - x1))  # 20% buffer, same as in sample_traces
+
         for i, trace in enumerate(self.traces):
-            # Translate coordinates from the working area to the full image
-            x = [trace['start'][0] + self.working_area[0], trace['end'][0] + self.working_area[0]]
-            y = [trace['start'][1] + self.working_area[1], trace['end'][1] + self.working_area[1]]
-            
+            # Translate coordinates from the working area (including buffer) to the full image
+            start_x = trace['start'][0] - buffer + x1
+            start_y = trace['start'][1] - buffer + y1
+            end_x = trace['end'][0] - buffer + x1
+            end_y = trace['end'][1] - buffer + y1
+
             if trace['type'] == 'Pit':
                 if trace['subtype'] == 'Small':
-                    ax.plot(x, y, 'ro', markersize=5)
+                    ax.plot([start_x, end_x], [start_y, end_y], 'ro-', markersize=5, linewidth=1)
                 else:  # Large Pit
-                    ax.plot(x, y, 'ro', markersize=8)
+                    ax.plot([start_x, end_x], [start_y, end_y], 'ro-', markersize=8, linewidth=1)
             else:  # Scratch
                 if trace['subtype'] == 'Fine':
-                    ax.plot(x, y, 'b-', linewidth=1)
+                    ax.plot([start_x, end_x], [start_y, end_y], 'b-', linewidth=1)
                 else:  # Coarse Scratch
-                    ax.plot(x, y, 'b-', linewidth=2)
-            
+                    ax.plot([start_x, end_x], [start_y, end_y], 'b-', linewidth=2)
+
             # Add label
-            mid_x = np.mean(x)
-            mid_y = np.mean(y)
+            mid_x = (start_x + end_x) / 2
+            mid_y = (start_y + end_y) / 2
             ax.text(mid_x, mid_y, str(i+1), color='yellow', fontsize=8, 
                     ha='center', va='center', bbox=dict(facecolor='black', alpha=0.5))
-        
+
+        # Draw the buffer zone
+        buffer_rect = Rectangle((x1-buffer, y1-buffer), x2-x1+2*buffer, y2-y1+2*buffer, 
+                                fill=False, edgecolor='green', linestyle='--', linewidth=1)
+        ax.add_patch(buffer_rect)
+
         ax.set_title('Classified Microwear Traces')
         plt.tight_layout()
         plt.show()
