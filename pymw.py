@@ -6,8 +6,12 @@ import csv
 import numpy as np
 from itertools import combinations
 import argparse
+import os
+import datetime  # Import datetime for timestamp
+
 class MicroWear:
     def __init__(self, image_path, working_area_size=200):
+        self.image_path = image_path  # Store image path for filename extraction
         self.image = cv2.imread(image_path)
         self.image_rgb = cv2.cvtColor(self.image, cv2.COLOR_BGR2RGB)
         self.height, self.width = self.image.shape[:2]
@@ -15,6 +19,7 @@ class MicroWear:
         self.working_area_size = working_area_size
         self.working_area = None
         self.traces = []
+        self.scale_factor = None  # Initialize scale_factor
 
     def set_scale(self):
         fig, ax = plt.subplots()
@@ -335,7 +340,7 @@ class MicroWear:
         
         return angle
 
-    def generate_summary(self, output_file='microwear_summary.csv'):
+    def generate_summary(self, output_file=None):
         summary = {
             'Pit': {'total': 0, 'small': 0, 'large': 0, 'lengths': [], 'widths': []},
             'Scratch': {'total': 0, 'fine': 0, 'coarse': 0, 'lengths': [], 'widths': []}
@@ -380,6 +385,13 @@ class MicroWear:
                 all_data = summary[feature][dimension + 's']
                 stats[f'{feature.lower()}_mean_{dimension}'] = np.mean(all_data) if all_data else 0
                 stats[f'{feature.lower()}_sd_{dimension}'] = np.std(all_data) if all_data else 0
+        
+        # Generate output filename if not provided
+        if output_file is None:
+            current_time = datetime.datetime.now()
+            time_str = current_time.strftime('%Y%m%d%H%M%S')
+            image_filename = os.path.splitext(os.path.basename(self.image_path))[0]
+            output_file = f"{time_str}_{image_filename}_summary.csv"
         
         # Write to CSV
         with open(output_file, 'w', newline='') as csvfile:
@@ -461,17 +473,96 @@ class MicroWear:
         plt.tight_layout()
         plt.show()
 
+
+    def save_traces_to_csv(self, output_file=None):
+        if output_file is None:
+            current_time = datetime.datetime.now()
+            time_str = current_time.strftime('%Y%m%d%H%M%S')
+            image_filename = os.path.splitext(os.path.basename(self.image_path))[0]
+            output_file = f"{time_str}_{image_filename}_traces.csv"
+
+        with open(output_file, 'w', newline='') as csvfile:
+            writer = csv.writer(csvfile)
+            # Save scale factor and working area at the top of the CSV file
+            writer.writerow(['Scale Factor', self.scale_factor])
+            writer.writerow(['Working Area', self.working_area])
+            # Proceed with writing the traces as before
+            fieldnames = ['Trace Number', 'Type', 'Subtype', 'Length (μm)', 'Width (μm)',
+                          'Start X (px)', 'Start Y (px)', 'End X (px)', 'End Y (px)']
+            writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+            writer.writeheader()
+            for idx, trace in enumerate(self.traces):
+                writer.writerow({
+                    'Trace Number': idx + 1,
+                    'Type': trace.get('type', ''),
+                    'Subtype': trace.get('subtype', ''),
+                    'Length (μm)': trace['length'],
+                    'Width (μm)': trace['width'],
+                    'Start X (px)': trace['start'][0],
+                    'Start Y (px)': trace['start'][1],
+                    'End X (px)': trace['end'][0],
+                    'End Y (px)': trace['end'][1]
+                })
+
+        print(f"Traces have been saved to {output_file}")
+
+    def load_traces_from_csv(self, input_file):
+        if not os.path.isfile(input_file):
+            print(f"File {input_file} does not exist.")
+            return
+
+        with open(input_file, 'r') as csvfile:
+            reader = csv.reader(csvfile)
+            # Read scale factor and working area
+            scale_row = next(reader)
+            working_area_row = next(reader)
+            self.scale_factor = float(scale_row[1])
+            # Convert working area string back to tuple of integers
+            self.working_area = tuple(map(int, working_area_row[1].strip('()').split(',')))
+            # Proceed to read the traces
+            reader = csv.DictReader(csvfile)
+            self.traces = []
+            for row in reader:
+                trace = {
+                    'type': row.get('Type', ''),
+                    'subtype': row.get('Subtype', ''),
+                    'length': float(row['Length (μm)']),
+                    'width': float(row['Width (μm)']),
+                    'start': (float(row['Start X (px)']), float(row['Start Y (px)'])),
+                    'end': (float(row['End X (px)']), float(row['End Y (px)']))
+                }
+                self.traces.append(trace)
+
+        print(f"Traces have been loaded from {input_file}")
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="MicroWear Analysis Tool")
-    IMAGE_PATH = 'images/paper_img_A.png'
+    IMAGE_PATH = 'images/paper_img_A.png'  # Replace with your image path
     parser.add_argument('--image_path', type=str, default=IMAGE_PATH, help='Path to the image file')
     parser.add_argument('--working_area_size', type=int, default=200, help='Size of the working area in microns (default: 200)')
+    parser.add_argument('--trace_file', type=str, help='Path to the trace file to load')
     args = parser.parse_args()
 
     micro_wear = MicroWear(args.image_path, args.working_area_size)
-    micro_wear.set_scale()
-    micro_wear.select_working_area()
-    micro_wear.sample_traces()
+
+    if args.trace_file:
+        # Load traces from the provided trace file
+        micro_wear.load_traces_from_csv(args.trace_file)
+    else:
+        # Proceed with interactive scale setting and sampling
+        micro_wear.set_scale()
+        micro_wear.select_working_area()
+        micro_wear.sample_traces()
+        # Save the measurements to a CSV file
+        micro_wear.save_traces_to_csv()
+
+    # Classify traces (ensure they are classified whether loaded or sampled)
     micro_wear.classify_traces()
+
+    # Visualize the classified traces
     micro_wear.visualize_classified_traces()
-    micro_wear.generate_summary()
+
+    # Generate and save the summary statistics
+    if not args.trace_file:
+        micro_wear.generate_summary()
