@@ -391,7 +391,8 @@ class MicroWear:
             current_time = datetime.datetime.now()
             time_str = current_time.strftime('%Y%m%d%H%M%S')
             image_filename = os.path.splitext(os.path.basename(self.image_path))[0]
-            output_file = f"{time_str}_{image_filename}_summary.csv"
+            # **Modified Filename Order Here**
+            output_file = f"{image_filename}_summary_{time_str}.csv"
         
         # Write to CSV
         with open(output_file, 'w', newline='') as csvfile:
@@ -479,7 +480,8 @@ class MicroWear:
             current_time = datetime.datetime.now()
             time_str = current_time.strftime('%Y%m%d%H%M%S')
             image_filename = os.path.splitext(os.path.basename(self.image_path))[0]
-            output_file = f"{time_str}_{image_filename}_traces.csv"
+            # **Modified Filename Order Here**
+            output_file = f"{image_filename}_traces_{time_str}.csv"
 
         with open(output_file, 'w', newline='') as csvfile:
             writer = csv.writer(csvfile)
