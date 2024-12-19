@@ -25,16 +25,18 @@ class MicroWear:
         fig, ax = plt.subplots()
         ax.imshow(self.image_rgb)
         ax.set_title("Click two points to set scale")
-        
+
         points = plt.ginput(2)
-        
         pixel_distance = np.sqrt((points[1][0] - points[0][0])**2 + (points[1][1] - points[0][1])**2)
-        
+
         real_distance = float(input("Enter the real-world distance between the two points (in μm): "))
-        
+
         self.scale_factor = real_distance / pixel_distance
         print(f"Scale set: 1 pixel = {self.scale_factor:.4f} μm")
-        
+
+        # Recalculate self.area in microns now that scale_factor is known
+        self.area = (min(self.height, self.width) / 2) * self.scale_factor
+
         plt.close()
 
     def select_working_area(self):
