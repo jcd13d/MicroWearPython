@@ -215,7 +215,7 @@ class MicroWear:
                     update_status()
                     fig.canvas.draw_idle()
                 else:
-                    print("You've already selected 4 points for this sample. Press 'n' to start a new sample or 'u' to undo the last point.")
+                    print("You've already selected 4 points for this sample. Press 'n' for a new sample or 'u' to undo the last point.")
                     status_text.set_text("Max 4 points reached.\nPress 'n' for new sample\nor 'u' to undo.")
                     fig.canvas.draw_idle()
 
@@ -321,11 +321,9 @@ class MicroWear:
         x1, y1 = line_start
         x2, y2 = line_end
 
-        # Calculate distances to start and end points
         dist_start = np.sqrt((x0 - x1)**2 + (y0 - y1)**2)
         dist_end = np.sqrt((x0 - x2)**2 + (y0 - y2)**2)
 
-        # Return the minimum distance
         return min(dist_start, dist_end)
 
     def calculate_angle(self, scratch1, scratch2):
@@ -334,7 +332,6 @@ class MicroWear:
         dot_product = np.dot(v1, v2)
         magnitudes = np.linalg.norm(v1) * np.linalg.norm(v2)
         
-        # Handle potential floating-point errors
         cos_angle = np.clip(dot_product / magnitudes, -1.0, 1.0)
         angle = np.degrees(np.arccos(cos_angle))
         
@@ -357,21 +354,36 @@ class MicroWear:
         
         parallel_pairs = sum(1 for result in scratch_results if result['is_parallel'])
         crossing_pairs = sum(1 for result in scratch_results if result['is_crossing'])
-        
+
+        # Identify unique scratches involved in parallel and crossing pairs
+        parallel_scratch_indices = set()
+        crossing_scratch_indices = set()
+        for result in scratch_results:
+            if result['is_parallel']:
+                parallel_scratch_indices.add(result['scratch1'])
+                parallel_scratch_indices.add(result['scratch2'])
+            if result['is_crossing']:
+                crossing_scratch_indices.add(result['scratch1'])
+                crossing_scratch_indices.add(result['scratch2'])
+
+        total_scratches = summary['Scratch']['total']
+        percent_ps = (len(parallel_scratch_indices) / total_scratches) * 100 if total_scratches > 0 else 0
+        percent_xs = (len(crossing_scratch_indices) / total_scratches) * 100 if total_scratches > 0 else 0
+
         stats = {
             'N.pits': summary['Pit']['total'],
             'N.sp': summary['Pit']['small'],
             'N.lp': summary['Pit']['large'],
-            '%p': (summary['Pit']['total'] / (summary['Pit']['total'] + summary['Scratch']['total'])) * 100 if (summary['Pit']['total'] + summary['Scratch']['total']) > 0 else 0,
+            '%p': (summary['Pit']['total'] / (summary['Pit']['total'] + total_scratches)) * 100 if (summary['Pit']['total'] + total_scratches) > 0 else 0,
             'P': summary['Pit']['total'] / area_mm2 if area_mm2 > 0 else 0,
-            'N.scratches': summary['Scratch']['total'],
+            'N.scratches': total_scratches,
             'N.fs': summary['Scratch']['fine'],
             'N.cs': summary['Scratch']['coarse'],
-            'S': summary['Scratch']['total'] / area_mm2 if area_mm2 > 0 else 0,
+            'S': total_scratches / area_mm2 if area_mm2 > 0 else 0,
             'N.Ps': parallel_pairs,
             'N.Xs': crossing_pairs,
-            '%Ps': (parallel_pairs / summary['Scratch']['total']) * 100 if summary['Scratch']['total'] > 0 else 0,
-            '%Xs': (crossing_pairs / summary['Scratch']['total']) * 100 if summary['Scratch']['total'] > 0 else 0
+            '%Ps': percent_ps,
+            '%Xs': percent_xs
         }
         
         # Calculate means and standard deviations
@@ -391,7 +403,7 @@ class MicroWear:
             current_time = datetime.datetime.now()
             time_str = current_time.strftime('%Y%m%d%H%M%S')
             image_filename = os.path.splitext(os.path.basename(self.image_path))[0]
-            # **Modified Filename Order Here**
+            # Modified Filename Order Here
             output_file = f"{image_filename}_summary_{time_str}.csv"
         
         # Write to CSV
@@ -473,7 +485,6 @@ class MicroWear:
         ax.set_title('Classified Microwear Traces')
         plt.tight_layout()
         plt.show()
-
 
     def save_traces_to_csv(self, output_file=None):
         if output_file is None:
