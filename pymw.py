@@ -579,5 +579,4 @@ if __name__ == "__main__":
     micro_wear.visualize_classified_traces()
 
     # Generate and save the summary statistics
-    if not args.trace_file:
-        micro_wear.generate_summary()
+    micro_wear.generate_summary()
