@@ -85,7 +85,8 @@ class MicroWear:
 
         x1, y1, x2, y2 = self.working_area
         buffer = int(0.2 * (x2 - x1))  # 20% buffer
-        working_image = self.image_rgb[max(0, y1-buffer):min(self.height, y2+buffer), max(0, x1-buffer):min(self.width, x2+buffer)]
+        working_image = self.image_rgb[max(0, y1-buffer):min(self.height, y2+buffer), 
+                                       max(0, x1-buffer):min(self.width, x2+buffer)]
 
         fig, (ax, status_ax) = plt.subplots(2, 1, gridspec_kw={'height_ratios': [4, 1]}, figsize=(10, 12))
         ax.imshow(working_image)
@@ -239,7 +240,22 @@ class MicroWear:
         print("Sampling completed.")
 
     def classify_traces(self):
+        """
+        In this updated version, we handle the case where width might be zero (or extremely close to zero).
+        We set width to a very small epsilon value and print a warning.
+        """
         for trace in self.traces:
+            # Avoid division by zero
+            if trace['width'] == 0:
+                trace['width'] = 1e-9
+                print("Warning: Encountered a trace with zero width. Setting width to 1e-9 to avoid division by zero.")
+            
+            # If width is extremely small, you might do something similar:
+            if trace['width'] < 1e-9:
+                trace['width'] = 1e-9
+                print("Warning: Encountered an extremely small width. Setting width to 1e-9 to avoid division by zero.")
+
+            # Proceed with classification
             if trace['length'] / trace['width'] > 4:
                 trace['type'] = 'Scratch'
                 trace['subtype'] = 'Fine' if trace['width'] <= 3 else 'Coarse'
